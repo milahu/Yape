@@ -13,6 +13,12 @@ let totalSpeedDiv = document.getElementById('totalSpeed');
 let limitSpeedStatus = true;
 
 
+function assertArray(value) {
+    if (!Array.isArray(value)) {
+        throw Error(`expected array, got ${typeof(value)}: ${value}`);
+    }
+}
+
 function updateLimitSpeedStatus() {
     getLimitSpeedStatus(function(status) {
         limitSpeedStatus = status;
@@ -25,6 +31,7 @@ function updateStatusDownloads(loop) {
     getStatusDownloads(function (status) {
         let html = '';
         let totalSpeed = 0;
+        assertArray(status);
         status.forEach(function(download) {
             totalSpeed += download.speed;
             html += `

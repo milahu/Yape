@@ -1,3 +1,16 @@
+function doCallback(...args) {
+    const callback = args.shift();
+    if (callback) {
+        try {
+            callback(...args);
+        }
+        catch (e) {
+            console.log(`error in callback function:\n${callback}`);
+            throw e;
+        }
+    }
+}
+
 function getServerStatus(callback) {
     let xhr = new XMLHttpRequest();
     xhr.open('POST', `${origin}/api/statusServer`, true);
@@ -7,18 +20,18 @@ function getServerStatus(callback) {
             try {
                 const response = JSON.parse(xhr.responseText);
                 if (response.hasOwnProperty('error')) {
-                    if (callback) callback(false, response.error);
+                    doCallback(callback, false, response.error);
                 } else {
-                    if (callback) callback(true, null, response);
+                    doCallback(callback, true, null, response);
                 }
             } catch {
-                if (callback) callback(false, 'Server unreachable');
+                doCallback(callback, false, 'Server unreachable');
             }
         }
     }
     xhr.timeout = 5000;
     xhr.ontimeout = function() {
-        if (callback) callback(false, 'Server unreachable');
+        doCallback(callback, false, 'Server unreachable');
     }
     xhr.send();
 }
@@ -30,15 +43,15 @@ function login(username, password, callback) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             if (JSON.parse(xhr.responseText) !== false) {
-                if (callback) callback(true);
+                doCallback(callback, true);
             } else {
-                if (callback) callback(false, 'Login failed, invalid credentials');
+                doCallback(callback, false, 'Login failed, invalid credentials');
             }
         }
     }
     xhr.timeout = 5000;
     xhr.ontimeout = function() {
-        if (callback) callback(false, 'Login failed, server unreachable');
+        doCallback(callback, false, 'Login failed, server unreachable');
     }
     xhr.send(`username=${username}&password=${password}`);
 }
@@ -50,10 +63,16 @@ function getStatusDownloads(callback) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             const status = JSON.parse(xhr.responseText);
-            if (callback) callback(status);
+            doCallback(callback, status);
         }
     }
     xhr.send();
+}
+
+function assertArray(value) {
+    if (!Array.isArray(value)) {
+        throw Error(`expected array, got ${typeof(value)}: ${value}`);
+    }
 }
 
 function getQueueData(callback) {
@@ -63,13 +82,14 @@ function getQueueData(callback) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             const queueData = JSON.parse(xhr.responseText);
+            assertArray(queueData);
             const urls = [];
             queueData.forEach(pack => {
                 pack.links.forEach(link => {
                     urls.push(link.url);
                 });
             });
-            if (callback) callback(urls);
+            doCallback(callback, urls);
         }
     }
     xhr.send();
@@ -81,8 +101,9 @@ function getLimitSpeedStatus(callback) {
     xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-            const limitSpeed = JSON.parse(xhr.responseText).toLowerCase() === 'true';
-            if (callback) callback(limitSpeed);
+            let limitSpeed = JSON.parse(xhr.responseText);
+            if (typeof(limitSpeed) == 'string') limitSpeed = limitSpeed.toLowerCase() === 'true';
+            doCallback(callback, limitSpeed);
         }
     }
     xhr.send();
@@ -95,7 +116,7 @@ function setLimitSpeedStatus(limitSpeed, callback) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             const success = JSON.parse(xhr.responseText);
-            if (callback) callback(success);
+            doCallback(callback, success);
         }
     }
     xhr.send();
@@ -109,9 +130,9 @@ function addPackage(name, url, callback) {
         if (xhr.readyState === 4) {
             const response = JSON.parse(xhr.responseText);
             if (response.hasOwnProperty('error')) {
-                if (callback) callback(false, response.error);
+                doCallback(callback, false, response.error);
             } else {
-                if (callback) callback(true);
+                doCallback(callback, true);
             }
         }
     }
@@ -126,7 +147,7 @@ function checkURL(url, callback) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             const response = JSON.parse(xhr.responseText);
-            if (callback) callback(!response.hasOwnProperty('BasePlugin') && !response.hasOwnProperty('error'));
+            doCallback(callback, !response.hasOwnProperty('BasePlugin') && !response.hasOwnProperty('error'));
         }
     }
     xhr.send(`urls=["${encodeURIComponent(url)}"]`);
